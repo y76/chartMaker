@@ -7,8 +7,8 @@ const PORT = process.env.PORT || 8080;
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve node_modules for mermaid from the correct location
-app.use('/node_modules', express.static('/home/pavel/apps/mermaid-live-editor/node_modules'));
+// Serve node_modules for mermaid from local project
+app.use('/node_modules', express.static(path.join(__dirname, 'node_modules')));
 
 // Route for the main page
 app.get('/', (req, res) => {

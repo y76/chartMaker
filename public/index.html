@@ -8,9 +8,16 @@
     
     <!-- Mermaid Library -->
     <script type="module">
-        import mermaid from '/node_modules/mermaid/dist/mermaid.esm.min.mjs';
-        window.mermaid = mermaid;
-        window.mermaidReady = true;
+        try {
+            const mermaid = await import('/node_modules/mermaid/dist/mermaid.esm.mjs');
+            console.log('Mermaid imported:', mermaid);
+            window.mermaid = mermaid.default || mermaid;
+            console.log('Mermaid available:', window.mermaid);
+            console.log('Mermaid render function:', window.mermaid?.render);
+            window.mermaidReady = true;
+        } catch (error) {
+            console.error('Mermaid import error:', error);
+        }
     </script>
     
     <!-- PDF Export Library -->
