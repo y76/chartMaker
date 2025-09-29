@@ -151,7 +151,7 @@ async function saveDiagramAsPNG() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Set canvas size with high resolution for better quality (300 DPI equivalent)
+        // Set canvas size with higher resolution for better quality (300 DPI equivalent)
         const scale = 300 / 96; // Scale factor for 300 DPI
         canvas.width = svgWidth * scale;
         canvas.height = svgHeight * scale;

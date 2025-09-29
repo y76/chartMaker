@@ -93,16 +93,20 @@ function autoSaveWork() {
     try {
         const code = window.getEditorContent ? window.getEditorContent() : '';
         const participants = window.participants || [];
+        const positions = window.getCurrentPositionModifications ? window.getCurrentPositionModifications() : {};
+        const colors = window.getCurrentColorModifications ? window.getCurrentColorModifications() : {};
         
         if (code.trim()) { // Only save if there's actual content
             const workData = {
                 code: code,
                 participants: participants,
+                positions: positions,
+                colors: colors,
                 lastSaved: Date.now()
             };
             
             localStorage.setItem('current_work', JSON.stringify(workData));
-            console.log('Work auto-saved');
+            console.log('Work auto-saved with modifications');
         }
     } catch (error) {
         console.warn('Auto-save failed:', error);
@@ -132,6 +136,15 @@ function restoreWork() {
                     if (window.renderParticipantsList) {
                         window.renderParticipantsList();
                     }
+                }
+                
+                // Restore position and color modifications
+                if (parsed.positions && window.applyStoredPositions) {
+                    window.applyStoredPositions(parsed.positions);
+                }
+                
+                if (parsed.colors && window.applyStoredColors) {
+                    window.applyStoredColors(parsed.colors);
                 }
                 
                 const status = document.getElementById('status');

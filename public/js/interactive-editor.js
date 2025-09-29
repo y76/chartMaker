@@ -522,8 +522,8 @@ function applyStoredPositions(modifications) {
     
     console.log('Applying stored position modifications:', modifications);
     
-    // Store these modifications locally so they persist for re-rendering
-    positionModifications = { ...modifications };
+    // Merge with existing modifications instead of overwriting
+    positionModifications = { ...positionModifications, ...modifications };
     
     const diagramContainer = document.getElementById('diagramContainer');
     const svg = diagramContainer?.querySelector('svg');
@@ -586,8 +586,8 @@ function applyStoredColors(modifications) {
     
     console.log('Applying stored color modifications:', modifications);
     
-    // Store these modifications locally so they persist for re-rendering
-    colorModifications = { ...modifications };
+    // Merge with existing modifications instead of overwriting
+    colorModifications = { ...colorModifications, ...modifications };
     
     const diagramContainer = document.getElementById('diagramContainer');
     const svg = diagramContainer?.querySelector('svg');
