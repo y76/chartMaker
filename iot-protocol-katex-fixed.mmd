@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant Idev as IoT Device
+    participant Udev as User Device
+    participant Msvr as Manufacturer Server
+
+    Note over Idev,Msvr: Provisioning
+
+    Note over Idev: Announcement
+    Idev->>Udev: $$Msg_{ann}$$
+
+    Note over Udev: Validate
+    Udev->>Msvr: Fetch $$Manifest_{Idev}$$ using $$URL_{Man}$$
+    Msvr-->>Udev: $$Manifest_{Idev}$$
+    Udev->>Udev: Verify all signatures and reports
+
+    Note over Udev: Key Exchange
+    Udev->>Udev: Generate and encrypt STS parameters
+
+    Note over Idev: Reception
+    Udev->>Idev: $$Msg_{resp}$$
+
+    Note over Udev: Range and Display
+    Idev->>Idev: Verify, derive shared secret, and decrypt
+
+    Note over Idev: Secure Ranging
+    Udev<<->>Idev: STS SS-TWR
+    Udev->>Udev: Display Distance AoA and Device Information
+
+    activate Idev
+    activate Udev
+    deactivate Udev
+    deactivate Idev

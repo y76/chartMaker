@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant Idev as IoT Device
+    participant Udev as User Device
+    participant Msvr as Manufacturer Server
+
+    Note over Idev,Msvr: Provisioning & Registration
+    Note over Msvr: Generate $$\{pk_{mfr}, sk_{mfr}\}$$
+    Note over Idev: Generate $$\{pk_{dev}, sk_{dev}\}$$ in TEE
+    Idev->>Msvr: $$pk_{dev}$$
+    Note over Msvr: Create device manifest $$M_{dev}$$
+    Note over Msvr: $$Sig_{M_{dev}} = Sign(sk_{mfr}, M_{dev})$$
+
+    Note over Idev,Udev: Runtime Protocol
+    
+    Note over Idev: [Announcement State]
+    Note over Idev: Compute $$H(software) \stackrel{?}{=} H_{stored}$$
+    Note over Idev: Generate nonce $$n_{dev}$$
+    Note over Idev: $$Sig_{ann} = Sign(sk_{dev}, H(ID_{dev}, n_{dev}, URL_{manifest}, attest, MAC_{BLE}))$$
+    Idev->>Udev: $$Msg_{ann} = [\text{"LOCO-ANN"}, n_{dev}, Sig_{ann}, URL_{manifest}, attest]$$
+
+    Note over Udev: [Receive & Validate State]
+    Udev->>Msvr: Fetch $$M_{dev}$$ using $$URL_{manifest}$$
+    Msvr-->>Udev: $$M_{dev}$$
+    Note over Udev: Verify $$Sig_{M_{dev}}$$ using $$pk_{mfr}$$
+    Note over Udev: Verify $$Sig_{ann}$$ using $$pk_{dev}$$
+
+    Note over Udev: [Key Exchange State]
+    Note over Udev: Generate $$\{pk_{usr}, sk_{usr}\}$$, $$STS_{key}$$, $$STS_{IV}$$, $$UWB_{src}$$, $$UWB_{dst}$$
+    Note over Udev: $$K_{shared} = ECDH(sk_{usr}, pk_{dev})$$
+    Note over Udev: $$encrypted = AES\text{-}GCM(K_{shared}, STS_{key} || STS_{IV} || UWB_{src} || UWB_{dst})$$
+    Udev->>Idev: $$Msg_{resp} = [\text{"LOCO-RES"}, n_{dev}, encrypted, AES_{IV}, pk_{usr}]$$
+
+    Note over Idev: [Reception State]
+    Note over Idev: Verify $$n_{dev}$$ within window $$\delta$$
+    Note over Idev: $$K_{shared} = ECDH(sk_{dev}, pk_{usr})$$
+    Note over Idev: Decrypt and verify $$AES_{tag}$$
+    Note over Idev: Configure UWB with $$STS_{key}$$, $$STS_{IV}$$, $$UWB_{src}$$, $$UWB_{dst}$$
+
+    Note over Idev,Udev: [Secure Ranging State]
+    Udev<<->>Idev: SS-TWR with STS Authentication
+    Note over Udev: Verify STS quality and packet integrity
+    Note over Udev: Calculate distance and AoA
+    Note over Udev: Display distance, AoA, and device info from $$M_{dev}$$

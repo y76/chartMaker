@@ -1,0 +1,43 @@
+sequenceDiagram
+    actor C as Consumer (C)
+    participant I as Intermediary (I)
+    participant B as Broker (B)
+    
+    Note over B: Phase 0: Broker Registry Setup
+    Note over B: $$pk_B \leftarrow KeyGen(g,Z)$$
+    Note over I: Intermediary accesses registry
+    Note over I: Retrieves $$\{pk_{B_j}\}_{j \in [m]}$$
+    
+    Note over C,B: Phase 1: Consumer and Intermediary
+    C ->> I: Start request with $$ID_C$$, request type
+    Note right of C: Request: "Access", "Delete", or "Opt-out"
+    I ->> C: $$\{pk_{B_j}\}_{j \in [m]}$$, PII labels superset
+    
+    Note over C: $$((a_1,a_2),(Z^{a_1},g^{a_2})) = (sk_C,pk_C) \leftarrow KeyGen(g,Z)$$
+    Note over C: $$c_i = Enc(Z^{a_1},-x_i), \forall x_i \in X$$
+    Note over C: $$rk_{C \rightarrow B_j} \leftarrow ReKeyGen(sk_C, pk_{B_j}), \forall j \in [m]$$
+    
+    C ->> I: $$\{c_i\}_{x_i \in X}, \{rk_{C \rightarrow B_j}\}_{j \in [m]}$$
+    Note over I: Store encrypted PII and re-encryption keys
+    
+    Note over I,B: Phase 2: Intermediary and Broker
+    I ->> B: $$ID_C$$, request type
+    
+    Note over B: $$\tilde{c}_i \leftarrow Enc(Z^{b_2}, y_i), \forall y_i \in Y$$
+    B ->> I: $$\{\tilde{c}_i\}_{y_i \in Y}$$
+    
+    Note over I: $$c_{i,R} = ReEnc(c_i, rk_{C \rightarrow B})$$
+    Note over I: $$a_i' = Add(c_{i,R}, \tilde{c}_i) = Enc(Z^{b_2}, -x_i + y_i)$$
+    Note over I: Select random $$w_i$$, re-randomize
+    Note over I: $$a_i = (\alpha^{w_i}, \beta^{w_i})$$
+    
+    I ->> B: $$\{a_i\}_{i \in [n]}$$
+    
+    Note over B: $$d_i = ParDec(sk_B, a_i)$$
+    Note over B: If $$x_i = y_i$$, then $$d_i = 1_{G_2}$$
+    Note over B: Compute $$X \cap Y = \{y_i : d_i = 1\}$$
+    Note over B: Use $$X \cap Y$$ for identity verification
+    
+    Note over C,B: Phase 3: Broker Response
+    B ->> I: Response $$\{ \text{delete} | \text{opt-out} | Enc(pk_C, \text{data}) | \text{cannot verify} \}$$
+    I ->> C: Forward broker response

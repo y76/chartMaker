@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pavel's Interactive Mermaid Editor</title>
+    
+    <!-- Mermaid Library -->
+    <script type="module">
+        import mermaid from '/node_modules/mermaid/dist/mermaid.esm.min.mjs';
+        window.mermaid = mermaid;
+        window.mermaidReady = true;
+    </script>
+    
+    <!-- PDF Export Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- CodeMirror 5 - Reliable and battle-tested -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="js/mermaid-mode.js"></script>
+    <script src="js/code-editor-simple.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <div class="header">
+        <h1>🧜‍♀️ Pavel's Interactive Mermaid Editor</h1>
+        <div class="controls">
+            <span id="status" class="status">Ready to render</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="editor-panel">
+                <div class="panel-header">📝 Mermaid Code</div>
+                <div id="codeEditor" class="code-editor"></div>
+            </div>
+
+            <div class="color-panel">
+                <div class="panel-header">🎨 Custom Colors</div>
+                <div class="color-config">
+                    <!-- Dynamic Participants List -->
+                    <div id="participants-list">
+                        <!-- Participants will be dynamically inserted here -->
+                    </div>
+                    
+                    <div class="color-actions">
+                        <button class="color-btn" onclick="resetToDefaultColors()">🔄 Reset to Default</button>
+                        <button class="color-btn" onclick="clearAllParticipants()">🗑️ Clear All</button>
+                    </div>
+                    
+                    <!-- Add New Participant Form -->
+                    <div class="add-participant-form">
+                        <h4>➕ Add Participant</h4>
+                        <div class="form-inputs">
+                            <label>Display Name: <input type="text" id="new-participant-name" placeholder="e.g., IoT Device" /></label>
+                            <label>Lifeline Key: <input type="text" id="new-participant-key" placeholder="e.g., Idev" /></label>
+                            <label>Type: 
+                                <select id="new-participant-type">
+                                    <option value="actor">Actor (Stick Figure)</option>
+                                    <option value="participant">Participant (Box)</option>
+                                </select>
+                            </label>
+                            <div class="color-row">
+                                <label>Background: <input type="color" id="new-participant-bg" value="#87CEEB"></label>
+                                <label>Border: <input type="color" id="new-participant-border" value="#4682B4"></label>
+                            </div>
+                            <button class="add-btn" onclick="addNewParticipant()">➕ Add</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-panel">
+            <div class="panel-header">🖼️ Rendered Diagram</div>
+            <div id="diagramContainer" class="diagram-container">
+                <div style="color: #6c757d; text-align: center;">
+                    <p>👇 Click "Render Diagram" to see your visualization</p>
+                </div>
+            </div>
+            <div class="diagram-actions">
+                <button class="render-btn" onclick="renderDiagram()">🎨 Render Diagram</button>
+                <button class="render-btn" onclick="applyCustomColors()">🌈 Apply Colors</button>
+                <button class="render-btn" onclick="toggleInteractiveMode()">🎯 Interactive Edit</button>
+                <button class="render-btn" onclick="saveDiagramAsPDF()">📄 Save as PDF</button>
+                <button class="render-btn" onclick="saveDiagramAsPNG()">🖼️ Save as PNG</button>
+                <button class="render-btn" onclick="saveMermaidCode()">💾 Save Code</button>
+                <button class="render-btn" onclick="copyShareableLink()">🔗 Copy Link</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Modules -->
+    <script src="js/mermaid-loader.js"></script>
+    <script src="js/color-manager.js"></script>
+    <script src="js/diagram-renderer.js"></script>
+    <script src="js/pdf-export.js"></script>
+    <script src="js/shortlink.js"></script>
+    <script src="js/code-export.js"></script>
+    <script src="js/interactive-editor.js"></script>
+    <script src="js/event-handlers.js"></script>
+    <!-- Code editor loads last as it's a module -->
+</body>
+
+</html>
