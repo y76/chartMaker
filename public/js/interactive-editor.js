@@ -499,6 +499,32 @@ function clearPositionModifications() {
     console.log('Position modifications cleared');
 }
 
+// Fix tilde accent positioning in KaTeX expressions
+function fixTildeAccents(container) {
+    const svg = container.querySelector('svg');
+    if (!svg) return;
+
+    console.log('Fixing tilde accents...');
+
+    // Find all foreignObject elements containing math
+    const foreignObjects = svg.querySelectorAll('foreignObject');
+    
+    foreignObjects.forEach(foreignObj => {
+        // Look for mover elements with accent="true" that contain tildes
+        const movers = foreignObj.querySelectorAll('mover[accent="true"]');
+        
+        movers.forEach(mover => {
+            const tildeElement = mover.querySelector('mo');
+            if (tildeElement && tildeElement.textContent === '~') {
+                console.log('Found tilde with accent="true", changing to accent="false"');
+                mover.setAttribute('accent', 'false');
+            }
+        });
+    });
+
+    console.log('Tilde accent fix completed');
+}
+
 // Make functions globally available
 window.toggleInteractiveMode = toggleInteractiveMode;
 window.adjustPosition = adjustPosition;
@@ -508,3 +534,4 @@ window.closePositionPopup = closePositionPopup;
 window.getCurrentPositionModifications = getCurrentPositionModifications;
 window.applyStoredPositions = applyStoredPositions;
 window.clearPositionModifications = clearPositionModifications;
+window.fixTildeAccents = fixTildeAccents;

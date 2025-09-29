@@ -60,6 +60,11 @@ async function applyCustomColors() {
     try {
         // Apply custom colors
         colorParticipants(diagramContainer);
+        
+        // Fix tilde accents for better rendering
+        if (window.fixTildeAccents) {
+            fixTildeAccents(diagramContainer);
+        }
 
         status.textContent = 'Custom colors applied successfully!';
         status.className = 'status success';
