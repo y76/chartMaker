@@ -70,3 +70,71 @@ async function applyCustomColors() {
         status.className = 'status error';
     }
 }
+
+// Re-render diagram while preserving position modifications
+async function rerenderWithPositions() {
+    const status = document.getElementById('status');
+    
+    // Store current position modifications before re-rendering
+    const savedPositions = window.getCurrentPositionModifications ? window.getCurrentPositionModifications() : {};
+    
+    console.log('Re-rendering with position preservation. Saved positions:', savedPositions);
+    
+    status.textContent = 'Re-rendering diagram...';
+    status.className = 'status';
+    
+    try {
+        // First, render the diagram normally
+        await renderDiagram();
+        
+        // Then apply colors if there are participants
+        if (window.participants && window.participants.length > 0) {
+            status.textContent = 'Reapplying colors...';
+            status.className = 'status';
+            
+            setTimeout(() => {
+                if (window.applyCustomColors) {
+                    applyCustomColors();
+                }
+                
+                // Apply saved positions after a short delay
+                setTimeout(() => {
+                    if (Object.keys(savedPositions).length > 0 && window.applyStoredPositions) {
+                        status.textContent = 'Restoring positions...';
+                        status.className = 'status';
+                        
+                        window.applyStoredPositions(savedPositions);
+                        
+                        status.textContent = 'Diagram re-rendered with preserved positions!';
+                        status.className = 'status success';
+                    } else {
+                        status.textContent = 'Diagram re-rendered successfully!';
+                        status.className = 'status success';
+                    }
+                }, 300);
+                
+            }, 500);
+        } else {
+            // Apply saved positions even without colors
+            setTimeout(() => {
+                if (Object.keys(savedPositions).length > 0 && window.applyStoredPositions) {
+                    status.textContent = 'Restoring positions...';
+                    status.className = 'status';
+                    
+                    window.applyStoredPositions(savedPositions);
+                    
+                    status.textContent = 'Diagram re-rendered with preserved positions!';
+                    status.className = 'status success';
+                } else {
+                    status.textContent = 'Diagram re-rendered successfully!';
+                    status.className = 'status success';
+                }
+            }, 300);
+        }
+        
+    } catch (error) {
+        console.error('Re-render with positions error:', error);
+        status.textContent = 'Failed to re-render diagram';
+        status.className = 'status error';
+    }
+}

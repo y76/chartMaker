@@ -162,13 +162,18 @@ function copyShareableLink() {
         // Get current participants data
         const participantsData = window.participants || [];
         
+        // Get current position modifications
+        const positionData = window.getCurrentPositionModifications ? window.getCurrentPositionModifications() : {};
+        
         console.log('Current participants being shared:', participantsData);
+        console.log('Current position modifications being shared:', positionData);
         
         // Create data object to encode
         const shareData = {
             code: code,
             participants: participantsData,
-            version: '1.0'
+            positions: positionData,
+            version: '1.1'
         };
         
         // Create short link instead of massive URL
@@ -333,15 +338,29 @@ function loadFromUrl() {
                                 
                                 applyCustomColors();
                                 
-                                // After colors are applied, move the content to visible container
+                                // Apply position modifications if available
+                                if (shareData.positions && window.applyStoredPositions) {
+                                    console.log('Auto-applying position modifications (hidden)');
+                                    
+                                    if (status) {
+                                        status.textContent = 'Restoring positions...';
+                                        status.className = 'status';
+                                    }
+                                    
+                                    setTimeout(() => {
+                                        window.applyStoredPositions(shareData.positions);
+                                    }, 200);
+                                }
+                                
+                                // After everything is applied, move the content to visible container
                                 setTimeout(() => {
-                                    console.log('Moving colored diagram to visible container');
+                                    console.log('Moving complete diagram to visible container');
                                     
                                     // Restore original container IDs
                                     hiddenContainer.id = 'hiddenDiagramContainer';
                                     originalContainer.id = tempId;
                                     
-                                    // Move the rendered and colored content to the visible container
+                                    // Move the rendered, colored, and positioned content to the visible container
                                     originalContainer.innerHTML = hiddenContainer.innerHTML;
                                     
                                     // Remove hidden container
@@ -355,7 +374,7 @@ function loadFromUrl() {
                                         status.textContent = 'Shared diagram loaded successfully!';
                                         status.className = 'status success';
                                     }
-                                }, 500);
+                                }, 700);
                             } else {
                                 // No custom colors to apply, just move content and show
                                 console.log('Moving diagram to visible container (no colors)');
@@ -522,6 +541,14 @@ function loadFromShortLink(shortId) {
                             
                             applyCustomColors();
                             
+                            // Apply position modifications if available
+                            if (shareData.positions && window.applyStoredPositions) {
+                                console.log('Auto-applying position modifications from short link');
+                                setTimeout(() => {
+                                    window.applyStoredPositions(shareData.positions);
+                                }, 200);
+                            }
+                            
                             setTimeout(() => {
                                 console.log('Moving diagram to visible container');
                                 
@@ -535,7 +562,7 @@ function loadFromShortLink(shortId) {
                                     status.textContent = 'Shared diagram loaded successfully!';
                                     status.className = 'status success';
                                 }
-                            }, 500);
+                            }, 700);
                         }
                     }, 1000);
                 }

@@ -2,6 +2,7 @@
 
 let isInteractiveMode = false;
 let currentPopup = null;
+let positionModifications = {}; // Store all position changes
 
 // Toggle interactive mode
 function toggleInteractiveMode() {
@@ -335,6 +336,9 @@ function applyPosition() {
     // Update the popup's original position reference
     currentPopup.originalX = newX;
     currentPopup.originalY = newY;
+    
+    // Store the position modification for sharing
+    storePositionModification(element, newX, newY);
 }
 
 // Reset to original position
@@ -378,9 +382,129 @@ function translatePath(pathData, deltaX, deltaY) {
         });
 }
 
+// Store position modification for sharing
+function storePositionModification(element, x, y) {
+    // Create a unique identifier for the element
+    const elementId = getElementIdentifier(element);
+    
+    positionModifications[elementId] = {
+        x: x,
+        y: y,
+        type: element.tagName,
+        timestamp: Date.now()
+    };
+    
+    console.log(`Stored position for ${elementId}:`, positionModifications[elementId]);
+}
+
+// Get unique identifier for an element
+function getElementIdentifier(element) {
+    // Create identifier based on element properties
+    if (element.tagName === 'foreignObject') {
+        const content = element.textContent?.trim().substring(0, 20) || '';
+        return `foreignObject_${content}_${element.getAttribute('width')}_${element.getAttribute('height')}`;
+    } else if (element.tagName === 'g') {
+        const rect = element.querySelector('rect');
+        const text = element.querySelector('text');
+        const content = text?.textContent?.trim() || '';
+        return `group_${content}_${rect?.getAttribute('width')}_${rect?.getAttribute('height')}`;
+    } else if (element.tagName === 'text') {
+        const content = element.textContent?.trim().substring(0, 20) || '';
+        return `text_${content}`;
+    } else if (element.tagName === 'line') {
+        const className = element.className.baseVal || '';
+        const name = element.getAttribute('name') || '';
+        return `line_${className}_${name}`;
+    } else if (element.tagName === 'path') {
+        const className = element.className.baseVal || '';
+        const pathStart = element.getAttribute('d')?.substring(0, 20) || '';
+        return `path_${className}_${pathStart}`;
+    }
+    
+    return `${element.tagName}_${Date.now()}`;
+}
+
+// Get all current position modifications for sharing
+function getCurrentPositionModifications() {
+    return { ...positionModifications };
+}
+
+// Apply stored position modifications to a diagram
+function applyStoredPositions(modifications) {
+    if (!modifications) return;
+    
+    console.log('Applying stored position modifications:', modifications);
+    
+    // Store these modifications locally so they persist for re-rendering
+    positionModifications = { ...modifications };
+    
+    const diagramContainer = document.getElementById('diagramContainer');
+    const svg = diagramContainer?.querySelector('svg');
+    if (!svg) return;
+    
+    // Apply each stored modification
+    Object.entries(modifications).forEach(([elementId, modification]) => {
+        try {
+            // Find the element by recreating its identifier and matching
+            const elements = svg.querySelectorAll('*');
+            
+            for (const element of elements) {
+                if (getElementIdentifier(element) === elementId) {
+                    console.log(`Restoring position for ${elementId}:`, modification);
+                    
+                    // Apply the stored position
+                    if (element.tagName === 'foreignObject') {
+                        element.setAttribute('x', modification.x);
+                        element.setAttribute('y', modification.y);
+                    } else if (element.tagName === 'g') {
+                        // Handle group positioning
+                        const rect = element.querySelector('rect');
+                        const text = element.querySelector('text');
+                        
+                        if (rect && text) {
+                            const textOffsetX = parseFloat(text.getAttribute('x')) - parseFloat(rect.getAttribute('x'));
+                            const textOffsetY = parseFloat(text.getAttribute('y')) - parseFloat(rect.getAttribute('y'));
+                            
+                            rect.setAttribute('x', modification.x);
+                            rect.setAttribute('y', modification.y);
+                            text.setAttribute('x', modification.x + textOffsetX);
+                            text.setAttribute('y', modification.y + textOffsetY);
+                        }
+                    } else if (element.tagName === 'text') {
+                        element.setAttribute('x', modification.x);
+                        element.setAttribute('y', modification.y);
+                    } else if (element.tagName === 'line') {
+                        // For lines, we stored the original x1,y1 position
+                        const deltaX = modification.x - parseFloat(element.getAttribute('x1'));
+                        const deltaY = modification.y - parseFloat(element.getAttribute('y1'));
+                        
+                        element.setAttribute('x1', parseFloat(element.getAttribute('x1')) + deltaX);
+                        element.setAttribute('y1', parseFloat(element.getAttribute('y1')) + deltaY);
+                        element.setAttribute('x2', parseFloat(element.getAttribute('x2')) + deltaX);
+                        element.setAttribute('y2', parseFloat(element.getAttribute('y2')) + deltaY);
+                    }
+                    
+                    break;
+                }
+            }
+        } catch (error) {
+            console.warn(`Failed to restore position for ${elementId}:`, error);
+        }
+    });
+}
+
+// Clear position modifications
+function clearPositionModifications() {
+    positionModifications = {};
+    console.log('Position modifications cleared');
+}
+
 // Make functions globally available
 window.toggleInteractiveMode = toggleInteractiveMode;
 window.adjustPosition = adjustPosition;
 window.applyPosition = applyPosition;
 window.resetPosition = resetPosition;
 window.closePositionPopup = closePositionPopup;
+window.getCurrentPositionModifications = getCurrentPositionModifications;
+window.applyStoredPositions = applyStoredPositions;
+window.clearPositionModifications = clearPositionModifications;
