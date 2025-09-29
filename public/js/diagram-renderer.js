@@ -80,10 +80,12 @@ async function applyCustomColors() {
 async function rerenderWithPositions() {
     const status = document.getElementById('status');
     
-    // Store current position modifications before re-rendering
+    // Store current position and color modifications before re-rendering
     const savedPositions = window.getCurrentPositionModifications ? window.getCurrentPositionModifications() : {};
+    const savedColors = window.getCurrentColorModifications ? window.getCurrentColorModifications() : {};
     
-    console.log('Re-rendering with position preservation. Saved positions:', savedPositions);
+    console.log('Re-rendering with modifications preservation. Saved positions:', savedPositions);
+    console.log('Saved colors:', savedColors);
     
     status.textContent = 'Re-rendering diagram...';
     status.className = 'status';
@@ -102,20 +104,33 @@ async function rerenderWithPositions() {
                     applyCustomColors();
                 }
                 
-                // Apply saved positions after a short delay
+                // Apply saved positions and colors after a short delay
                 setTimeout(() => {
                     if (Object.keys(savedPositions).length > 0 && window.applyStoredPositions) {
                         status.textContent = 'Restoring positions...';
                         status.className = 'status';
                         
                         window.applyStoredPositions(savedPositions);
-                        
-                        status.textContent = 'Diagram re-rendered with preserved positions!';
-                        status.className = 'status success';
-                    } else {
-                        status.textContent = 'Diagram re-rendered successfully!';
-                        status.className = 'status success';
                     }
+                    
+                    if (Object.keys(savedColors).length > 0 && window.applyStoredColors) {
+                        status.textContent = 'Restoring element colors...';
+                        status.className = 'status';
+                        
+                        setTimeout(() => {
+                            window.applyStoredColors(savedColors);
+                        }, 200);
+                    }
+                    
+                    setTimeout(() => {
+                        const hasModifications = Object.keys(savedPositions).length > 0 || Object.keys(savedColors).length > 0;
+                        if (hasModifications) {
+                            status.textContent = 'Diagram re-rendered with preserved modifications!';
+                        } else {
+                            status.textContent = 'Diagram re-rendered successfully!';
+                        }
+                        status.className = 'status success';
+                    }, 500);
                 }, 300);
                 
             }, 500);

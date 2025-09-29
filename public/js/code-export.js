@@ -165,15 +165,20 @@ function copyShareableLink() {
         // Get current position modifications
         const positionData = window.getCurrentPositionModifications ? window.getCurrentPositionModifications() : {};
         
+        // Get current color modifications
+        const colorData = window.getCurrentColorModifications ? window.getCurrentColorModifications() : {};
+        
         console.log('Current participants being shared:', participantsData);
         console.log('Current position modifications being shared:', positionData);
+        console.log('Current color modifications being shared:', colorData);
         
         // Create data object to encode
         const shareData = {
             code: code,
             participants: participantsData,
             positions: positionData,
-            version: '1.1'
+            colors: colorData,
+            version: '1.2'
         };
         
         // Create short link instead of massive URL
@@ -350,6 +355,20 @@ function loadFromUrl() {
                                     setTimeout(() => {
                                         window.applyStoredPositions(shareData.positions);
                                     }, 200);
+                                }
+                                
+                                // Apply color modifications if available
+                                if (shareData.colors && window.applyStoredColors) {
+                                    console.log('Auto-applying color modifications (hidden)');
+                                    
+                                    if (status) {
+                                        status.textContent = 'Restoring element colors...';
+                                        status.className = 'status';
+                                    }
+                                    
+                                    setTimeout(() => {
+                                        window.applyStoredColors(shareData.colors);
+                                    }, 400);
                                 }
                                 
                                 // After everything is applied, move the content to visible container
@@ -547,6 +566,14 @@ function loadFromShortLink(shortId) {
                                 setTimeout(() => {
                                     window.applyStoredPositions(shareData.positions);
                                 }, 200);
+                            }
+                            
+                            // Apply color modifications if available
+                            if (shareData.colors && window.applyStoredColors) {
+                                console.log('Auto-applying color modifications from short link');
+                                setTimeout(() => {
+                                    window.applyStoredColors(shareData.colors);
+                                }, 400);
                             }
                             
                             setTimeout(() => {

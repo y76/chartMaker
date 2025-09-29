@@ -499,9 +499,9 @@ body {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     font-family: 'Figtree', sans-serif;
     font-size: 14px;
-    width: 280px;
-    max-height: 300px;
-    overflow: hidden;
+    width: 320px;
+    max-height: 450px;
+    overflow-y: auto;
 }
 
 .popup-header {
@@ -553,6 +553,28 @@ body {
 
 .position-controls {
     margin-bottom: 15px;
+}
+
+.color-controls {
+    margin-bottom: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.color-controls h5 {
+    margin: 0 0 10px 0;
+    color: #495057;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.color-controls input[type="color"] {
+    width: 40px;
+    height: 30px;
+    border: 1px solid #ced4da;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 0;
 }
 
 .control-row {

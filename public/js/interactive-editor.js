@@ -3,6 +3,7 @@
 let isInteractiveMode = false;
 let currentPopup = null;
 let positionModifications = {}; // Store all position changes
+let colorModifications = {}; // Store all color changes
 
 // Toggle interactive mode
 function toggleInteractiveMode() {
@@ -175,6 +176,19 @@ function showPositionPopup(element, event) {
                     <button onclick="adjustPosition('y', 5)">+5</button>
                 </div>
             </div>
+            ${elementInfo.hasColorControls ? `
+            <div class="color-controls">
+                <h5>Colors</h5>
+                <div class="control-row">
+                    <label>Fill:</label>
+                    <input type="color" id="element-fill" value="${elementInfo.fillColor}" onchange="updateElementColor('fill', this.value)">
+                </div>
+                <div class="control-row">
+                    <label>Border:</label>
+                    <input type="color" id="element-stroke" value="${elementInfo.strokeColor}" onchange="updateElementColor('stroke', this.value)">
+                </div>
+            </div>
+            ` : ''}
             <div class="popup-actions">
                 <button onclick="applyPosition()">Apply</button>
                 <button onclick="resetPosition()">Reset</button>
@@ -183,14 +197,36 @@ function showPositionPopup(element, event) {
         </div>
     `;
     
-    // Position popup near the click
+    // Position popup near the click with better screen edge handling
     popup.style.position = 'fixed';
-    popup.style.left = Math.min(event.clientX + 10, window.innerWidth - 300) + 'px';
-    popup.style.top = Math.min(event.clientY + 10, window.innerHeight - 200) + 'px';
+    
+    // Calculate position with larger popup dimensions
+    const popupWidth = 320;
+    const popupHeight = 450;
+    
+    let left = event.clientX + 10;
+    let top = event.clientY + 10;
+    
+    // Adjust if popup would go off the right edge
+    if (left + popupWidth > window.innerWidth) {
+        left = event.clientX - popupWidth - 10;
+    }
+    
+    // Adjust if popup would go off the bottom edge
+    if (top + popupHeight > window.innerHeight) {
+        top = window.innerHeight - popupHeight - 10;
+    }
+    
+    // Ensure popup doesn't go off the left or top edges
+    left = Math.max(10, left);
+    top = Math.max(10, top);
+    
+    popup.style.left = left + 'px';
+    popup.style.top = top + 'px';
     popup.style.zIndex = '10000';
     
     document.body.appendChild(popup);
-    currentPopup = { popup, element, originalX: elementInfo.x, originalY: elementInfo.y };
+    currentPopup = { popup, element, elementInfo, originalX: elementInfo.x, originalY: elementInfo.y };
 }
 
 // Get element information
@@ -219,6 +255,18 @@ function getElementInfo(element) {
             y = parseFloat(rect.getAttribute('y') || 0);
             content = text.textContent?.trim() || 'Group';
             type = 'Note/Group';
+            
+            // Add color information for groups with rects
+            const fillColor = rect.getAttribute('fill') || rect.style.fill || '#EDF2AE';
+            const strokeColor = rect.getAttribute('stroke') || rect.style.stroke || '#666';
+            
+            return { 
+                x, y, content, type, 
+                hasColorControls: true, 
+                fillColor: fillColor,
+                strokeColor: strokeColor,
+                colorTarget: rect
+            };
         } else {
             const bbox = element.getBBox();
             x = bbox.x;
@@ -256,7 +304,7 @@ function getElementInfo(element) {
         type = 'Path';
     }
     
-    return { x, y, content, type };
+    return { x, y, content, type, hasColorControls: false };
 }
 
 // Adjust position by delta
@@ -265,6 +313,26 @@ function adjustPosition(axis, delta) {
     const currentValue = parseFloat(input.value) || 0;
     input.value = currentValue + delta;
     applyPosition();
+}
+
+// Update element color
+function updateElementColor(colorType, value) {
+    if (!currentPopup || !currentPopup.elementInfo || !currentPopup.elementInfo.colorTarget) return;
+    
+    const element = currentPopup.elementInfo.colorTarget;
+    
+    if (colorType === 'fill') {
+        element.setAttribute('fill', value);
+        element.style.fill = value;
+    } else if (colorType === 'stroke') {
+        element.setAttribute('stroke', value);
+        element.style.stroke = value;
+    }
+    
+    // Store the color modification for sharing
+    storeColorModification(currentPopup.element, colorType, value);
+    
+    console.log(`Updated ${colorType} color to ${value} for element:`, element);
 }
 
 // Apply new position
@@ -397,6 +465,20 @@ function storePositionModification(element, x, y) {
     console.log(`Stored position for ${elementId}:`, positionModifications[elementId]);
 }
 
+// Store color modification for sharing
+function storeColorModification(element, colorType, value) {
+    const elementId = getElementIdentifier(element);
+    
+    if (!colorModifications[elementId]) {
+        colorModifications[elementId] = {};
+    }
+    
+    colorModifications[elementId][colorType] = value;
+    colorModifications[elementId].timestamp = Date.now();
+    
+    console.log(`Stored ${colorType} color for ${elementId}:`, value);
+}
+
 // Get unique identifier for an element
 function getElementIdentifier(element) {
     // Create identifier based on element properties
@@ -427,6 +509,11 @@ function getElementIdentifier(element) {
 // Get all current position modifications for sharing
 function getCurrentPositionModifications() {
     return { ...positionModifications };
+}
+
+// Get all current color modifications for sharing
+function getCurrentColorModifications() {
+    return { ...colorModifications };
 }
 
 // Apply stored position modifications to a diagram
@@ -493,10 +580,65 @@ function applyStoredPositions(modifications) {
     });
 }
 
+// Apply stored color modifications to a diagram
+function applyStoredColors(modifications) {
+    if (!modifications) return;
+    
+    console.log('Applying stored color modifications:', modifications);
+    
+    // Store these modifications locally so they persist for re-rendering
+    colorModifications = { ...modifications };
+    
+    const diagramContainer = document.getElementById('diagramContainer');
+    const svg = diagramContainer?.querySelector('svg');
+    if (!svg) return;
+    
+    // Apply each stored color modification
+    Object.entries(modifications).forEach(([elementId, modification]) => {
+        try {
+            // Find the element by recreating its identifier and matching
+            const elements = svg.querySelectorAll('*');
+            
+            for (const element of elements) {
+                if (getElementIdentifier(element) === elementId) {
+                    console.log(`Restoring colors for ${elementId}:`, modification);
+                    
+                    // Find the colorable element (rect for groups, or the element itself)
+                    let colorTarget = element;
+                    if (element.tagName === 'g') {
+                        const rect = element.querySelector('rect');
+                        if (rect) colorTarget = rect;
+                    }
+                    
+                    // Apply stored colors
+                    if (modification.fill) {
+                        colorTarget.setAttribute('fill', modification.fill);
+                        colorTarget.style.fill = modification.fill;
+                    }
+                    if (modification.stroke) {
+                        colorTarget.setAttribute('stroke', modification.stroke);
+                        colorTarget.style.stroke = modification.stroke;
+                    }
+                    
+                    break;
+                }
+            }
+        } catch (error) {
+            console.warn(`Failed to restore colors for ${elementId}:`, error);
+        }
+    });
+}
+
 // Clear position modifications
 function clearPositionModifications() {
     positionModifications = {};
     console.log('Position modifications cleared');
+}
+
+// Clear color modifications
+function clearColorModifications() {
+    colorModifications = {};
+    console.log('Color modifications cleared');
 }
 
 // Fix tilde accent positioning in KaTeX expressions
@@ -531,7 +673,11 @@ window.adjustPosition = adjustPosition;
 window.applyPosition = applyPosition;
 window.resetPosition = resetPosition;
 window.closePositionPopup = closePositionPopup;
+window.updateElementColor = updateElementColor;
 window.getCurrentPositionModifications = getCurrentPositionModifications;
+window.getCurrentColorModifications = getCurrentColorModifications;
 window.applyStoredPositions = applyStoredPositions;
+window.applyStoredColors = applyStoredColors;
 window.clearPositionModifications = clearPositionModifications;
+window.clearColorModifications = clearColorModifications;
 window.fixTildeAccents = fixTildeAccents;
