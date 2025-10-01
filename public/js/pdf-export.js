@@ -204,6 +204,114 @@ async function saveDiagramAsPNG() {
     }
 }
 
+// Save diagram as compressed PDF (smaller file size)
+async function saveDiagramAsPDFCompressed() {
+    const diagramContainer = document.getElementById('diagramContainer');
+    const status = document.getElementById('status');
+
+    // Check if there's a rendered diagram
+    const svg = diagramContainer.querySelector('svg');
+    if (!svg) {
+        status.textContent = 'Please render a diagram first';
+        status.className = 'status error';
+        return;
+    }
+
+    status.textContent = 'Generating compressed PDF...';
+    status.className = 'status';
+
+    try {
+        // Clone the SVG to avoid modifying the original
+        const svgClone = svg.cloneNode(true);
+        
+        // Get SVG dimensions
+        const svgRect = svg.getBoundingClientRect();
+        const svgWidth = svg.viewBox?.baseVal?.width || svgRect.width || 800;
+        const svgHeight = svg.viewBox?.baseVal?.height || svgRect.height || 600;
+
+        // Ensure SVG has proper dimensions
+        svgClone.setAttribute('width', svgWidth);
+        svgClone.setAttribute('height', svgHeight);
+        
+        // Add XML namespace if missing
+        if (!svgClone.getAttribute('xmlns')) {
+            svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        }
+        
+        // Fix math expressions for PDF export
+        fixMathForExport(svgClone);
+
+        // Serialize SVG to string
+        const svgData = new XMLSerializer().serializeToString(svgClone);
+        
+        // Create data URL directly from SVG
+        const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+
+        // Convert pixels to mm for PDF (using 96 DPI standard: 1 inch = 25.4mm, 1 inch = 96px)
+        const pxToMm = 25.4 / 96;
+        const pdfWidth = svgWidth * pxToMm;
+        const pdfHeight = svgHeight * pxToMm;
+        
+        // Add small margin for better appearance
+        const margin = 5; // 5mm margin
+        const finalPdfWidth = pdfWidth + (margin * 2);
+        const finalPdfHeight = pdfHeight + (margin * 2);
+
+        // Create PDF with custom dimensions that exactly fit the diagram
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
+            unit: 'mm',
+            format: [finalPdfWidth, finalPdfHeight]
+        });
+
+        // Use lower resolution for smaller file size (120 DPI)
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const scale = 120 / 96; // Scale factor for 120 DPI (much smaller files)
+        canvas.width = svgWidth * scale;
+        canvas.height = svgHeight * scale;
+        ctx.scale(scale, scale);
+        
+        // Set transparent background
+        ctx.clearRect(0, 0, svgWidth, svgHeight);
+        
+        // Create image and draw to canvas
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+                resolve();
+            };
+            img.onerror = reject;
+            img.src = svgDataUrl;
+        });
+        
+        // Use PNG with moderate quality for smaller file size while keeping transparency
+        const imgData = canvas.toDataURL('image/png', 0.8);
+        
+        // Add image to PDF at exact size with margin
+        pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth, pdfHeight);
+
+        // Generate filename with timestamp
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, '');
+        const filename = `mermaid-diagram-compressed-${timestamp}.pdf`;
+
+        // Save the PDF
+        pdf.save(filename);
+
+        status.textContent = `Compressed PDF saved as ${filename}`;
+        status.className = 'status success';
+
+    } catch (error) {
+        console.error('Compressed PDF export error:', error);
+        status.textContent = 'Failed to export compressed PDF - ' + error.message;
+        status.className = 'status error';
+    }
+}
+
 // Fix math expressions for proper export
 function fixMathForExport(svgElement) {
     console.log('Fixing math expressions for export...');

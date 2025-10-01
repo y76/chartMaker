@@ -641,6 +641,55 @@ function clearColorModifications() {
     console.log('Color modifications cleared');
 }
 
+// Clear ALL formatting and reset to original state
+function clearAllFormatting() {
+    const status = document.getElementById('status');
+    
+    if (!confirm('Clear all formatting? This will remove all position and color modifications and re-render the diagram from scratch. This cannot be undone.')) {
+        return;
+    }
+    
+    status.textContent = 'Clearing all formatting...';
+    status.className = 'status';
+    
+    try {
+        // Clear all stored modifications
+        positionModifications = {};
+        colorModifications = {};
+        
+        // Turn off interactive mode if it's on
+        if (isInteractiveMode) {
+            disableInteractiveMode();
+            isInteractiveMode = false;
+        }
+        
+        // Clear from auto-save as well
+        if (window.clearSavedWork) {
+            clearSavedWork();
+        }
+        
+        console.log('All formatting data cleared');
+        
+        // Re-render the diagram fresh
+        setTimeout(async () => {
+            status.textContent = 'Re-rendering clean diagram...';
+            status.className = 'status';
+            
+            if (window.renderDiagram) {
+                await renderDiagram();
+                
+                status.textContent = 'All formatting cleared - diagram reset to original!';
+                status.className = 'status success';
+            }
+        }, 100);
+        
+    } catch (error) {
+        console.error('Clear formatting error:', error);
+        status.textContent = 'Failed to clear formatting';
+        status.className = 'status error';
+    }
+}
+
 // Fix tilde accent positioning in KaTeX expressions
 function fixTildeAccents(container) {
     const svg = container.querySelector('svg');
@@ -680,4 +729,5 @@ window.applyStoredPositions = applyStoredPositions;
 window.applyStoredColors = applyStoredColors;
 window.clearPositionModifications = clearPositionModifications;
 window.clearColorModifications = clearColorModifications;
+window.clearAllFormatting = clearAllFormatting;
 window.fixTildeAccents = fixTildeAccents;
