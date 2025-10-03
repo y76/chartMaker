@@ -16,6 +16,21 @@ function waitForMermaid() {
 async function initializeMermaid() {
     await waitForMermaid();
 
+    // Register FontAwesome icons
+    try {
+        await window.mermaid.registerIconPacks([
+            {
+                name: 'fa',
+                loader: () =>
+                    fetch('https://unpkg.com/@iconify-json/fa6-solid@1/icons.json')
+                        .then((res) => res.json())
+            }
+        ]);
+        console.log('FontAwesome icons registered successfully');
+    } catch (error) {
+        console.error('Failed to register FontAwesome icons:', error);
+    }
+
     window.mermaid.initialize({
         startOnLoad: false, // We'll render manually
         theme: 'base',

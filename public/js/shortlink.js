@@ -95,6 +95,7 @@ function autoSaveWork() {
         const participants = window.participants || [];
         const positions = window.getCurrentPositionModifications ? window.getCurrentPositionModifications() : {};
         const colors = window.getCurrentColorModifications ? window.getCurrentColorModifications() : {};
+        const loopFlips = window.getCurrentLoopFlips ? window.getCurrentLoopFlips() : [];
         
         if (code.trim()) { // Only save if there's actual content
             const workData = {
@@ -102,6 +103,7 @@ function autoSaveWork() {
                 participants: participants,
                 positions: positions,
                 colors: colors,
+                loopFlips: loopFlips,
                 lastSaved: Date.now()
             };
             
@@ -138,13 +140,17 @@ function restoreWork() {
                     }
                 }
                 
-                // Restore position and color modifications
+                // Restore position, color, and loop modifications
                 if (parsed.positions && window.applyStoredPositions) {
                     window.applyStoredPositions(parsed.positions);
                 }
                 
                 if (parsed.colors && window.applyStoredColors) {
                     window.applyStoredColors(parsed.colors);
+                }
+                
+                if (parsed.loopFlips && window.applyLoopFlips) {
+                    window.applyLoopFlips(parsed.loopFlips);
                 }
                 
                 const status = document.getElementById('status');

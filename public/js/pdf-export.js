@@ -35,6 +35,9 @@ async function saveDiagramAsPDF() {
         
         // Fix math expressions for PDF export
         fixMathForExport(svgClone);
+        
+        // Apply thick line styling for export
+        applyExportStyling(svgClone);
 
         // Serialize SVG to string
         const svgData = new XMLSerializer().serializeToString(svgClone);
@@ -240,6 +243,9 @@ async function saveDiagramAsPDFCompressed() {
         
         // Fix math expressions for PDF export
         fixMathForExport(svgClone);
+        
+        // Apply thick line styling for export
+        applyExportStyling(svgClone);
 
         // Serialize SVG to string
         const svgData = new XMLSerializer().serializeToString(svgClone);
@@ -358,4 +364,31 @@ function fixMathForExport(svgElement) {
     });
     
     console.log('Math expressions fixed for export');
+}
+
+// Apply thick line styling directly to SVG for export
+function applyExportStyling(svgElement) {
+    console.log('Applying export styling...');
+    
+    // Apply thick line styling
+    const messageLines = svgElement.querySelectorAll('.messageLine0, .messageLine1');
+    messageLines.forEach(line => {
+        if (line.tagName === 'line') {
+            line.setAttribute('stroke-width', '3');
+            line.setAttribute('stroke', '#2c3e50');
+        } else if (line.tagName === 'path') {
+            line.setAttribute('stroke-width', '3');
+            line.setAttribute('stroke', '#2c3e50');
+        }
+    });
+    
+    // Apply thick actor-line styling
+    const actorLines = svgElement.querySelectorAll('.actor-line');
+    actorLines.forEach(line => {
+        line.setAttribute('stroke-width', '5');
+    });
+    
+    // Keep actor-lines in their normal position (don't move to front)
+    
+    console.log(`Applied export styling to ${messageLines.length} message lines and ${actorLines.length} actor lines`);
 }

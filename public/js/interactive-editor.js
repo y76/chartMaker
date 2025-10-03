@@ -4,6 +4,7 @@ let isInteractiveMode = false;
 let currentPopup = null;
 let positionModifications = {}; // Store all position changes
 let colorModifications = {}; // Store all color changes
+let loopFlips = new Set(); // Store flipped loop paths (simple set)
 
 // Toggle interactive mode
 function toggleInteractiveMode() {
@@ -145,6 +146,13 @@ function showPositionPopup(element, event) {
     
     console.log('Showing popup for element:', element.tagName, elementInfo);
     
+    // Debug path coordinates specifically
+    if (element.tagName === 'path') {
+        const pathData = element.getAttribute('d') || '';
+        console.log('Path data:', pathData);
+        console.log('Popup will show coordinates:', elementInfo.x, elementInfo.y);
+    }
+    
     // Create popup
     const popup = document.createElement('div');
     popup.className = 'position-popup';
@@ -192,6 +200,7 @@ function showPositionPopup(element, event) {
             <div class="popup-actions">
                 <button onclick="applyPosition()">Apply</button>
                 <button onclick="resetPosition()">Reset</button>
+                ${elementInfo.isLoop ? '<button onclick="flipLoop()">🔄 Flip Loop</button>' : ''}
                 <button onclick="closePositionPopup()">Close</button>
             </div>
         </div>
@@ -297,11 +306,26 @@ function getElementInfo(element) {
         content = element.getAttribute('name') || element.className.baseVal || 'Line';
         type = 'Line';
     } else if (element.tagName === 'path') {
-        const bbox = element.getBBox();
-        x = bbox.x;
-        y = bbox.y;
+        // For paths, use the actual start coordinates from the path data
+        const pathData = element.getAttribute('d') || '';
+        const pathStart = pathData.match(/M\s*([\d.-]+),([\d.-]+)/);
+        
+        if (pathStart) {
+            x = parseFloat(pathStart[1]);
+            y = parseFloat(pathStart[2]);
+        } else {
+            const bbox = element.getBBox();
+            x = bbox.x;
+            y = bbox.y;
+        }
+        
         content = 'Path element';
         type = 'Path';
+        
+        // Check if this is a self-loop
+        const isLoop = pathData.includes('C ') && pathData.match(/M\s*([\d.-]+),([\d.-]+).*C.*\1,/);
+        
+        return { x, y, content, type, hasColorControls: false, isLoop: isLoop };
     }
     
     return { x, y, content, type, hasColorControls: false };
@@ -332,7 +356,115 @@ function updateElementColor(colorType, value) {
     // Store the color modification for sharing
     storeColorModification(currentPopup.element, colorType, value);
     
+    // Trigger auto-save when color changes
+    if (window.autoSaveWork) {
+        setTimeout(() => {
+            window.autoSaveWork();
+        }, 500); // Debounced auto-save
+    }
+    
     console.log(`Updated ${colorType} color to ${value} for element:`, element);
+}
+
+// Flip self-loop direction (simple version)
+function flipLoop() {
+    if (!currentPopup || !currentPopup.element || currentPopup.element.tagName !== 'path') return;
+    
+    const pathElement = currentPopup.element;
+    const pathData = pathElement.getAttribute('d');
+    
+    if (!pathData) return;
+    
+    // Parse the curve and flip it horizontally
+    const flippedPath = flipLoopPath(pathData);
+    pathElement.setAttribute('d', flippedPath);
+    
+    // Store in simple set for basic tracking
+    const pathId = getSimplePathId(pathElement);
+    if (loopFlips.has(pathId)) {
+        loopFlips.delete(pathId); // Remove if already flipped (flip back)
+    } else {
+        loopFlips.add(pathId); // Add if not flipped
+    }
+    
+    console.log('Flipped loop direction, current flips:', Array.from(loopFlips));
+    
+    // Trigger auto-save when loop flips
+    if (window.autoSaveWork) {
+        setTimeout(() => {
+            window.autoSaveWork();
+        }, 500); // Debounced auto-save
+    }
+}
+
+// Simple path identifier for basic tracking
+function getSimplePathId(element) {
+    const pathData = element.getAttribute('d') || '';
+    const match = pathData.match(/M\s*([\d.-]+),([\d.-]+)/);
+    if (match) {
+        const x = Math.round(parseFloat(match[1]) / 10) * 10; // Round to nearest 10
+        const y = Math.round(parseFloat(match[2]) / 10) * 10;
+        return `loop_${x}_${y}`;
+    }
+    return `loop_${Date.now()}`;
+}
+
+// Flip a self-loop path horizontally
+function flipLoopPath(pathData) {
+    // For a typical self-loop: "M 276,471 C 336,461 336,501 276,491"
+    // We want to flip it to: "M 276,471 C 216,461 216,501 276,491"
+    
+    return pathData.replace(/M\s*([\d.-]+),([\d.-]+)\s*C\s*([\d.-]+),([\d.-]+)\s*([\d.-]+),([\d.-]+)\s*([\d.-]+),([\d.-]+)/, 
+        function(match, startX, startY, cp1X, cp1Y, cp2X, cp2Y, endX, endY) {
+            const start_X = parseFloat(startX);
+            const start_Y = parseFloat(startY);
+            const cp1_X = parseFloat(cp1X);
+            const cp1_Y = parseFloat(cp1Y);
+            const cp2_X = parseFloat(cp2X);
+            const cp2_Y = parseFloat(cp2Y);
+            const end_X = parseFloat(endX);
+            const end_Y = parseFloat(endY);
+            
+            // Calculate the center point
+            const centerX = (start_X + end_X) / 2;
+            
+            // Flip control points horizontally around the center
+            const flipped_cp1_X = centerX - (cp1_X - centerX);
+            const flipped_cp2_X = centerX - (cp2_X - centerX);
+            
+            return `M ${start_X},${start_Y} C ${flipped_cp1_X},${cp1_Y} ${flipped_cp2_X},${cp2_Y} ${end_X},${end_Y}`;
+        });
+}
+
+// Get current flipped loops for sharing
+function getCurrentLoopFlips() {
+    return Array.from(loopFlips);
+}
+
+// Apply flipped loops from shared data
+function applyLoopFlips(flippedLoops) {
+    if (!flippedLoops || !Array.isArray(flippedLoops)) return;
+    
+    console.log('Applying loop flips:', flippedLoops);
+    loopFlips = new Set(flippedLoops);
+    
+    const diagramContainer = document.getElementById('diagramContainer');
+    const svg = diagramContainer?.querySelector('svg');
+    if (!svg) return;
+    
+    // Find and flip the specified loops
+    const paths = svg.querySelectorAll('path');
+    paths.forEach(path => {
+        const pathId = getSimplePathId(path);
+        if (loopFlips.has(pathId)) {
+            const pathData = path.getAttribute('d');
+            if (pathData && pathData.match(/M\s*([\d.-]+),([\d.-]+).*C.*\1,/)) {
+                const flippedPath = flipLoopPath(pathData);
+                path.setAttribute('d', flippedPath);
+                console.log(`Applied flip to loop ${pathId}`);
+            }
+        }
+    });
 }
 
 // Apply new position
@@ -395,9 +527,12 @@ function applyPosition() {
         // Handle path movement by translating all coordinates
         const pathData = element.getAttribute('d');
         if (pathData) {
+            console.log(`Moving path from (${currentPopup.originalX}, ${currentPopup.originalY}) to (${newX}, ${newY}), delta: (${deltaX}, ${deltaY})`);
             const translatedPath = translatePath(pathData, deltaX, deltaY);
             element.setAttribute('d', translatedPath);
             console.log(`Moved path by (${deltaX}, ${deltaY})`);
+            console.log(`Original path: ${pathData.substring(0, 50)}...`);
+            console.log(`New path: ${translatedPath.substring(0, 50)}...`);
         }
     }
     
@@ -407,6 +542,13 @@ function applyPosition() {
     
     // Store the position modification for sharing
     storePositionModification(element, newX, newY);
+    
+    // Trigger auto-save when position changes
+    if (window.autoSaveWork) {
+        setTimeout(() => {
+            window.autoSaveWork();
+        }, 500); // Debounced auto-save
+    }
 }
 
 // Reset to original position
@@ -481,7 +623,23 @@ function storeColorModification(element, colorType, value) {
 
 // Get unique identifier for an element
 function getElementIdentifier(element) {
-    // Create identifier based on element properties
+    // Use numbered classes if available (more reliable)
+    const lineNumber = element.getAttribute('data-line-number');
+    const pathNumber = element.getAttribute('data-path-number');
+    const groupNumber = element.getAttribute('data-group-number');
+    const foreignNumber = element.getAttribute('data-foreign-number');
+    
+    if (lineNumber !== null) {
+        return `numbered-line-${lineNumber}`;
+    } else if (pathNumber !== null) {
+        return `numbered-path-${pathNumber}`;
+    } else if (groupNumber !== null) {
+        return `numbered-group-${groupNumber}`;
+    } else if (foreignNumber !== null) {
+        return `numbered-foreign-${foreignNumber}`;
+    }
+    
+    // Fallback to old system if numbering isn't available
     if (element.tagName === 'foreignObject') {
         const content = element.textContent?.trim().substring(0, 20) || '';
         return `foreignObject_${content}_${element.getAttribute('width')}_${element.getAttribute('height')}`;
@@ -569,6 +727,25 @@ function applyStoredPositions(modifications) {
                         element.setAttribute('y1', parseFloat(element.getAttribute('y1')) + deltaY);
                         element.setAttribute('x2', parseFloat(element.getAttribute('x2')) + deltaX);
                         element.setAttribute('y2', parseFloat(element.getAttribute('y2')) + deltaY);
+                    } else if (element.tagName === 'path') {
+                        // For paths, calculate delta from current path start coordinates
+                        const pathData = element.getAttribute('d') || '';
+                        const pathStart = pathData.match(/M\s*([\d.-]+),([\d.-]+)/);
+                        
+                        if (pathStart) {
+                            const currentX = parseFloat(pathStart[1]);
+                            const currentY = parseFloat(pathStart[2]);
+                            const deltaX = modification.x - currentX;
+                            const deltaY = modification.y - currentY;
+                            
+                            console.log(`Path restoration: current (${currentX}, ${currentY}) -> target (${modification.x}, ${modification.y}), delta (${deltaX}, ${deltaY})`);
+                            
+                            if (deltaX !== 0 || deltaY !== 0) {
+                                const translatedPath = translatePath(pathData, deltaX, deltaY);
+                                element.setAttribute('d', translatedPath);
+                                console.log(`Applied path translation: ${pathData.substring(0, 30)}... -> ${translatedPath.substring(0, 30)}...`);
+                            }
+                        }
                     }
                     
                     break;
@@ -656,6 +833,7 @@ function clearAllFormatting() {
         // Clear all stored modifications
         positionModifications = {};
         colorModifications = {};
+        loopFlips = new Set();
         
         // Turn off interactive mode if it's on
         if (isInteractiveMode) {
@@ -716,6 +894,50 @@ function fixTildeAccents(container) {
     console.log('Tilde accent fix completed');
 }
 
+// Reorder SVG elements so notes appear on top of arrows
+function bringNotesToFront(container) {
+    const svg = container.querySelector('svg');
+    if (!svg) {
+        console.log('No SVG found for layer reordering');
+        return;
+    }
+
+    console.log('Reordering SVG layers - bringing notes to front...');
+
+    // Find all groups that contain note rectangles
+    const allGroups = svg.querySelectorAll('g');
+    const noteGroupsArray = [];
+    
+    console.log(`Found ${allGroups.length} total groups`);
+    
+    allGroups.forEach((group, index) => {
+        const rect = group.querySelector('rect');
+        if (rect) {
+            const rectClass = rect.getAttribute('class') || '';
+            console.log(`Group ${index}: rect class = "${rectClass}"`);
+            
+            // Check if this rect has the note class or note-like appearance
+            if (rectClass.includes('note') || rect.getAttribute('fill') === '#EDF2AE') {
+                noteGroupsArray.push(group);
+                console.log(`Found note group ${index}`);
+            }
+        }
+    });
+
+    console.log(`Found ${noteGroupsArray.length} note groups to move`);
+
+    // Move all note groups to the end of the SVG (so they appear on top)
+    noteGroupsArray.forEach((noteGroup, index) => {
+        console.log(`Moving note group ${index} to front`);
+        // Remove from current position
+        noteGroup.parentNode.removeChild(noteGroup);
+        // Add to the end (appears on top)
+        svg.appendChild(noteGroup);
+    });
+
+    console.log(`Successfully moved ${noteGroupsArray.length} note groups to front`);
+}
+
 // Make functions globally available
 window.toggleInteractiveMode = toggleInteractiveMode;
 window.adjustPosition = adjustPosition;
@@ -723,11 +945,15 @@ window.applyPosition = applyPosition;
 window.resetPosition = resetPosition;
 window.closePositionPopup = closePositionPopup;
 window.updateElementColor = updateElementColor;
+window.flipLoop = flipLoop;
 window.getCurrentPositionModifications = getCurrentPositionModifications;
 window.getCurrentColorModifications = getCurrentColorModifications;
+window.getCurrentLoopFlips = getCurrentLoopFlips;
 window.applyStoredPositions = applyStoredPositions;
 window.applyStoredColors = applyStoredColors;
+window.applyLoopFlips = applyLoopFlips;
 window.clearPositionModifications = clearPositionModifications;
 window.clearColorModifications = clearColorModifications;
 window.clearAllFormatting = clearAllFormatting;
 window.fixTildeAccents = fixTildeAccents;
+window.bringNotesToFront = bringNotesToFront;

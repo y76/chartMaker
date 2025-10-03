@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant IoT as IoT Device
+    participant User as User Device
+
+    Note over IoT,User: Device Communication Protocol
+
+    Note over IoT: Announcement
+    IoT->>User: $$Msg_{ann}$$
+
+    Note over User: Receive and Validate
+    User->>User: Validate announcement and signatures
+
+    Note over User: Key Exchange
+    User->>IoT: $$Msg_{resp}$$
+
+    Note over IoT,User: Secure Ranging
+    User<<->>IoT: STS SS-TWR

@@ -491,6 +491,25 @@ body {
     background: #545b62;
 }
 
+
+
+
+/* Optional: Make the lines a bit darker for better visibility */
+#diagramContainer .messageLine0 {
+    stroke: #2c3e50 !important;
+}
+
+#diagramContainer .messageLine1 {
+    stroke: #34495e !important;
+}
+
+/* Left-align subgraph labels */
+#diagramContainer .cluster-label {
+    text-anchor: start !important;
+    dominant-baseline: hanging !important;
+}
+
+
 /* Interactive Editor Popup */
 .position-popup {
     background: white;

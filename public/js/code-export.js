@@ -168,9 +168,13 @@ function copyShareableLink() {
         // Get current color modifications
         const colorData = window.getCurrentColorModifications ? window.getCurrentColorModifications() : {};
         
+        // Get current loop flips
+        const loopFlips = window.getCurrentLoopFlips ? window.getCurrentLoopFlips() : [];
+        
         console.log('Current participants being shared:', participantsData);
         console.log('Current position modifications being shared:', positionData);
         console.log('Current color modifications being shared:', colorData);
+        console.log('Current loop flips being shared:', loopFlips);
         
         // Create data object to encode
         const shareData = {
@@ -178,6 +182,7 @@ function copyShareableLink() {
             participants: participantsData,
             positions: positionData,
             colors: colorData,
+            loopFlips: loopFlips,
             version: '1.2'
         };
         
@@ -371,6 +376,23 @@ function loadFromUrl() {
                                     }, 400);
                                 }
                                 
+                                // Apply loop flips if available
+                                if (shareData.loopFlips && window.applyLoopFlips) {
+                                    console.log('Auto-applying loop flips (hidden)');
+                                    
+                                    setTimeout(() => {
+                                        window.applyLoopFlips(shareData.loopFlips);
+                                    }, 600);
+                                }
+                                
+                                // Bring notes to front after all modifications
+                                setTimeout(() => {
+                                    if (window.bringNotesToFront) {
+                                        const diagramContainer = document.getElementById('diagramContainer');
+                                        bringNotesToFront(diagramContainer);
+                                    }
+                                }, 800);
+                                
                                 // After everything is applied, move the content to visible container
                                 setTimeout(() => {
                                     console.log('Moving complete diagram to visible container');
@@ -560,6 +582,12 @@ function loadFromShortLink(shortId) {
                             
                             applyCustomColors();
                             
+                            // Apply loop flips first (before positions)
+                            if (shareData.loopFlips && window.applyLoopFlips) {
+                                console.log('Auto-applying loop flips from short link:', shareData.loopFlips);
+                                window.applyLoopFlips(shareData.loopFlips);
+                            }
+                            
                             // Apply position modifications if available
                             if (shareData.positions && window.applyStoredPositions) {
                                 console.log('Auto-applying position modifications from short link');
@@ -576,6 +604,14 @@ function loadFromShortLink(shortId) {
                                 }, 400);
                             }
                             
+                            // Bring notes to front after all modifications  
+                            setTimeout(() => {
+                                if (window.bringNotesToFront) {
+                                    const diagramContainer = document.getElementById('diagramContainer');
+                                    bringNotesToFront(diagramContainer);
+                                }
+                            }, 700);
+                            
                             setTimeout(() => {
                                 console.log('Moving diagram to visible container');
                                 
@@ -589,7 +625,7 @@ function loadFromShortLink(shortId) {
                                     status.textContent = 'Shared diagram loaded successfully!';
                                     status.className = 'status success';
                                 }
-                            }, 700);
+                            }, 900);
                         }
                     }, 1000);
                 }
